@@ -55,8 +55,8 @@
                 const highTemp = data.main.temp_max;
                 document.getElementById("temperature").innerText = `The high temperature today in ${city} is ${highTemp}°F.`;
                 document.getElementById("status").innerText = highTemp >= 90 
-                    ? "It has reached 90°F or higher! 🥵" 
-                    : "It has not reached 90°F. 🍦";
+                    ? "It has reached 90°F or higher! 🍦🥵" 
+                    : "It has not reached 90°F. 😢";
             } catch (error) {
                 document.getElementById("temperature").innerText = "Unable to fetch weather data.";
                 document.getElementById("status").innerText = "Please check your API key or internet connection.";
