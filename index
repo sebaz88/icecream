@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Today's Weather</title>
+    <script>
+        async function getWeather() {
+            const apiKey = "YOUR_API_KEY"; // Replace with your OpenWeatherMap API key
+            const city = "Charlottesville";
+            const response = await fetch(`https://api.openweathermap.org/data/2.5/weather?q=${city}&units=imperial&appid=${apiKey}`);
+            const data = await response.json();
+
+            const highTemp = data.main.temp_max;
+            document.getElementById("temperature").innerText = `The high temperature today in ${city} is ${highTemp}°F.`;
+            document.getElementById("status").innerText = highTemp >= 90 ? "It has reached 90°F or higher!" : "It has not reached 90°F.";
+        }
+    </script>
+</head>
+<body onload="getWeather()">
+    <h1>Charlottesville Weather</h1>
+    <p id="temperature"></p>
+    <p id="status"></p>
+</body>
+</html>
