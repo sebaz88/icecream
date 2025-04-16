@@ -4,7 +4,7 @@
     <title>Today's Weather</title>
     <script>
         async function getWeather() {
-            const apiKey = "41086ec8a26267a2c0809b325d628d88"; // Replace with your OpenWeatherMap API key
+            const apiKey = "853d377f2cb7f62a43fb1bc298efd91b"; // Replace with your OpenWeatherMap API key
             const city = "Charlottesville";
             const response = await fetch(`https://api.openweathermap.org/data/2.5/weather?q=${city}&units=imperial&appid=${apiKey}`);
             const data = await response.json();
