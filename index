@@ -11,7 +11,7 @@
 
             const highTemp = data.main.temp_max;
             document.getElementById("temperature").innerText = `The high temperature today in ${city} is ${highTemp}°F.`;
-            document.getElementById("status").innerText = highTemp >= 90 ? "It has reached 90°F or higher!" : "It has not reached 90°F.";
+            document.getElementById("status").innerText = highTemp >= 90 ? "It has reached 90°F or higher!" : "It has not reached 90°F. Sad";
         }
     </script>
 </head>
