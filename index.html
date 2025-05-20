@@ -65,6 +65,77 @@
             }
         }
     </script>
+
+    <!DOCTYPE html>
+<html>
+<head>
+  <title>90°F Day Counter - Charlottesville</title>
+</head>
+<body>
+  <h1>Number of 90°F+ Days in Charlottesville (2025)</h1>
+  <p id="status">Fetching data...</p>
+  <p id="result"></p>
+
+  <script>
+    const lat = 38.0293;
+    const lon = -78.4767;
+    const apiKey = "853d377f2cb7f62a43fb1bc298efd91b";  // ← Replace this with your OpenWeather API key
+
+    // Convert YYYY-MM-DD to Unix timestamp
+    function toUnixTimestamp(dateString) {
+      return Math.floor(new Date(dateString).getTime() / 1000);
+    }
+
+    // Get all dates from Jan 1, 2025 to today
+    function generateDateRange(startDate, endDate) {
+      const dates = [];
+      let current = new Date(startDate);
+      const end = new Date(endDate);
+      while (current <= end) {
+        dates.push(new Date(current));
+        current.setDate(current.getDate() + 1);
+      }
+      return dates;
+    }
+
+    async function fetchHighTemp(date) {
+      const dt = Math.floor(date.getTime() / 1000);
+      const url = `https://api.openweathermap.org/data/3.0/onecall/timemachine?lat=${lat}&lon=${lon}&dt=${dt}&appid=${apiKey}&units=imperial`;
+      const response = await fetch(url);
+      const data = await response.json();
+      // Sometimes data is in 'data', other times it's in 'hourly' or 'daily'
+      const temps = data?.data || data?.hourly || [];
+      const maxTemp = Math.max(...temps.map(t => t.temp || 0));
+      return maxTemp;
+    }
+
+    async function countHotDays() {
+      const today = new Date();
+      const start = new Date("2025-01-01");
+      const dates = generateDateRange(start, today);
+      let hotDayCount = 0;
+
+      for (let i = 0; i < dates.length; i++) {
+        const date = dates[i];
+        document.getElementById("status").textContent = `Checking ${date.toDateString()} (${i + 1} of ${dates.length})...`;
+
+        try {
+          const highTemp = await fetchHighTemp(date);
+          if (highTemp >= 90) hotDayCount++;
+        } catch (err) {
+          console.error("Error fetching data for", date, err);
+        }
+
+        // Add delay to avoid hitting rate limit
+        await new Promise(res => setTimeout(res, 1100));  // 1.1 sec between calls
+      }
+
+      document.getElementById("status").textContent = "Done.";
+      document.getElementById("result").textContent = `Charlottesville has had ${hotDayCount} day(s) at or above 90°F so far in 2025.`;
+    }
+
+    countHotDays();
+  </script>
 </head>
 <body onload="getWeather()">
     <h1>Is it Ice Cream Day Today?</h1>
