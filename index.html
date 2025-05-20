@@ -153,6 +153,28 @@
     displayHotDayResults(hotDayCount, hotDates, false);
 }
 
+        function displayHotDayResults(count, hotDates, fromCache) {
+    document.getElementById("counter-status").textContent = fromCache ? "Loaded from cache." : "Done.";
+    document.getElementById("counter-result").textContent =
+        `Charlottesville has had ${count} day(s) at or above 90°F so far in 2025.`;
+
+    const listContainer = document.getElementById("hot-days-list");
+    listContainer.innerHTML = ""; // Clear old content
+
+    if (hotDates.length > 0) {
+        const list = document.createElement("ul");
+        hotDates.forEach(date => {
+            const li = document.createElement("li");
+            li.textContent = date;
+            list.appendChild(li);
+        });
+        listContainer.appendChild(list);
+    } else {
+        listContainer.innerHTML = "<p>No 90°F+ days recorded yet.</p>";
+    }
+}
+
+        
     </script>
 </body>
 </html>
