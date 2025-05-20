@@ -14,12 +14,11 @@
             font-size: 2.5em;
             color: #0056b3;
         }
-        #temperature, #status {
+        #temperature, #ice-cream-status, #counter-status {
             font-size: 1.5em;
             margin: 10px 0;
         }
-        #status {
-            font-size: 1.3em;
+        #ice-cream-status {
             color: #007f5f;
         }
         .weather-container {
@@ -41,10 +40,28 @@
             100% { opacity: 0.5; }
         }
     </style>
+</head>
+<body onload="getWeather(); countHotDays();">
+    <h1>Is it Ice Cream Day Today?</h1>
+    <div class="weather-container">
+        <p id="temperature"></p>
+        <p id="ice-cream-status"></p>
+        <p id="loading" class="loading" style="display: none;">Fetching weather data...</p>
+    </div>
+
+    <h1>Number of 90°F+ Days in Charlottesville (2025)</h1>
+    <p id="counter-status">Fetching data...</p>
+    <p id="counter-result"></p>
+
     <script>
+        // API key and location settings
+        const apiKey = "853d377f2cb7f62a43fb1bc298efd91b";
+        const lat = 38.0293;
+        const lon = -78.4767;
+        const city = "Charlottesville";
+
+        // Ice Cream Day check
         async function getWeather() {
-            const apiKey = "853d377f2cb7f62a43fb1bc298efd91b"; // Replace with your OpenWeatherMap API key
-            const city = "Charlottesville";
             const loadingMessage = document.getElementById("loading");
             loadingMessage.style.display = "block";
 
@@ -54,95 +71,62 @@
 
                 const highTemp = data.main.temp_max;
                 document.getElementById("temperature").innerText = `The high temperature today in ${city} is ${highTemp}°F.`;
-                document.getElementById("status").innerText = highTemp >= 90 
+                document.getElementById("ice-cream-status").innerText = highTemp >= 90 
                     ? "It has reached 90°F or higher! 🍦🥵" 
                     : "It has not reached 90°F. 😢";
             } catch (error) {
                 document.getElementById("temperature").innerText = "Unable to fetch weather data.";
-                document.getElementById("status").innerText = "Please check your API key or internet connection.";
+                document.getElementById("ice-cream-status").innerText = "Please check your API key or internet connection.";
             } finally {
                 loadingMessage.style.display = "none";
             }
         }
-    </script>
 
-    <!DOCTYPE html>
-<html>
-<head>
-  <title>90°F Day Counter - Charlottesville</title>
-</head>
-<body>
-  <h1>Number of 90°F+ Days in Charlottesville (2025)</h1>
-  <p id="status">Fetching data...</p>
-  <p id="result"></p>
-
-  <script>
-    const lat = 38.0293;
-    const lon = -78.4767;
-    const apiKey = "853d377f2cb7f62a43fb1bc298efd91b";  // ← Replace this with your OpenWeather API key
-
-    // Convert YYYY-MM-DD to Unix timestamp
-    function toUnixTimestamp(dateString) {
-      return Math.floor(new Date(dateString).getTime() / 1000);
-    }
-
-    // Get all dates from Jan 1, 2025 to today
-    function generateDateRange(startDate, endDate) {
-      const dates = [];
-      let current = new Date(startDate);
-      const end = new Date(endDate);
-      while (current <= end) {
-        dates.push(new Date(current));
-        current.setDate(current.getDate() + 1);
-      }
-      return dates;
-    }
-
-    async function fetchHighTemp(date) {
-      const dt = Math.floor(date.getTime() / 1000);
-      const url = `https://api.openweathermap.org/data/3.0/onecall/timemachine?lat=${lat}&lon=${lon}&dt=${dt}&appid=${apiKey}&units=imperial`;
-      const response = await fetch(url);
-      const data = await response.json();
-      // Sometimes data is in 'data', other times it's in 'hourly' or 'daily'
-      const temps = data?.data || data?.hourly || [];
-      const maxTemp = Math.max(...temps.map(t => t.temp || 0));
-      return maxTemp;
-    }
-
-    async function countHotDays() {
-      const today = new Date();
-      const start = new Date("2025-01-01");
-      const dates = generateDateRange(start, today);
-      let hotDayCount = 0;
-
-      for (let i = 0; i < dates.length; i++) {
-        const date = dates[i];
-        document.getElementById("status").textContent = `Checking ${date.toDateString()} (${i + 1} of ${dates.length})...`;
-
-        try {
-          const highTemp = await fetchHighTemp(date);
-          if (highTemp >= 90) hotDayCount++;
-        } catch (err) {
-          console.error("Error fetching data for", date, err);
+        // 90°F Day Counter
+        function generateDateRange(startDate, endDate) {
+            const dates = [];
+            let current = new Date(startDate);
+            const end = new Date(endDate);
+            while (current <= end) {
+                dates.push(new Date(current));
+                current.setDate(current.getDate() + 1);
+            }
+            return dates;
         }
 
-        // Add delay to avoid hitting rate limit
-        await new Promise(res => setTimeout(res, 1100));  // 1.1 sec between calls
-      }
+        async function fetchHighTemp(date) {
+            const dt = Math.floor(date.getTime() / 1000);
+            const url = `https://api.openweathermap.org/data/3.0/onecall/timemachine?lat=${lat}&lon=${lon}&dt=${dt}&appid=${apiKey}&units=imperial`;
+            const response = await fetch(url);
+            const data = await response.json();
+            const temps = data?.data || data?.hourly || [];
+            const maxTemp = Math.max(...temps.map(t => t.temp || 0));
+            return maxTemp;
+        }
 
-      document.getElementById("status").textContent = "Done.";
-      document.getElementById("result").textContent = `Charlottesville has had ${hotDayCount} day(s) at or above 90°F so far in 2025.`;
-    }
+        async function countHotDays() {
+            const today = new Date();
+            const start = new Date("2025-01-01");
+            const dates = generateDateRange(start, today);
+            let hotDayCount = 0;
 
-    countHotDays();
-  </script>
-</head>
-<body onload="getWeather()">
-    <h1>Is it Ice Cream Day Today?</h1>
-    <div class="weather-container">
-        <p id="temperature"></p>
-        <p id="status"></p>
-        <p id="loading" class="loading" style="display: none;">Fetching weather data...</p>
-    </div>
+            for (let i = 0; i < dates.length; i++) {
+                const date = dates[i];
+                document.getElementById("counter-status").textContent = `Checking ${date.toDateString()} (${i + 1} of ${dates.length})...`;
+
+                try {
+                    const highTemp = await fetchHighTemp(date);
+                    if (highTemp >= 90) hotDayCount++;
+                } catch (err) {
+                    console.error("Error fetching data for", date, err);
+                }
+
+                await new Promise(res => setTimeout(res, 1100));  // delay to avoid rate limits
+            }
+
+            document.getElementById("counter-status").textContent = "Done.";
+            document.getElementById("counter-result").textContent = `Charlottesville has had ${hotDayCount} day(s) at or above 90°F so far in 2025.`;
+        }
+    </script>
 </body>
 </html>
