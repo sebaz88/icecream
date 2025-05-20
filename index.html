@@ -52,6 +52,8 @@
     <h1>Number of 90°F+ Days in Charlottesville (2025)</h1>
     <p id="counter-status">Fetching data...</p>
     <p id="counter-result"></p>
+    <h2>📅 Days That Reached 90°F in 2025</h2>
+    <div id="hot-days-list" style="text-align: left; max-width: 400px; margin: 0 auto;"></div>
 
     <script>
         // API key and location settings
@@ -104,28 +106,72 @@
             return maxTemp;
         }
 
-        async function countHotDays() {
-            const today = new Date();
-            const start = new Date("2025-01-01");
-            const dates = generateDateRange(start, today);
-            let hotDayCount = 0;
+     async function countHotDays() {
+    const cacheKey = "hotDayData2025";
+    const cacheDateKey = "hotDayCacheDate";
+    const today = new Date().toISOString().split("T")[0];
 
-            for (let i = 0; i < dates.length; i++) {
-                const date = dates[i];
-                document.getElementById("counter-status").textContent = `Checking ${date.toDateString()} (${i + 1} of ${dates.length})...`;
+    // Check cache
+    const cachedData = localStorage.getItem(cacheKey);
+    const cachedDate = localStorage.getItem(cacheDateKey);
 
-                try {
-                    const highTemp = await fetchHighTemp(date);
-                    if (highTemp >= 90) hotDayCount++;
-                } catch (err) {
-                    console.error("Error fetching data for", date, err);
-                }
+    if (cachedData && cachedDate === today) {
+        const { count, hotDates } = JSON.parse(cachedData);
+        displayHotDayResults(count, hotDates, true);
+        return;
+    }
 
-                await new Promise(res => setTimeout(res, 1100));  // delay to avoid rate limits
+    const start = new Date("2025-01-01");
+    const dates = generateDateRange(start, new Date());
+    let hotDayCount = 0;
+    let hotDates = [];
+
+    for (let i = 0; i < dates.length; i++) {
+        const date = dates[i];
+        document.getElementById("counter-status").textContent =
+            `Checking ${date.toDateString()} (${i + 1} of ${dates.length})...`;
+
+        try {
+            const highTemp = await fetchHighTemp(date);
+            if (highTemp >= 90) {
+                hotDayCount++;
+                hotDates.push(date.toDateString());
             }
+        } catch (err) {
+            console.error("Error fetching data for", date, err);
+        }
 
-            document.getElementById("counter-status").textContent = "Done.";
-            document.getElementById("counter-result").textContent = `Charlottesville has had ${hotDayCount} day(s) at or above 90°F so far in 2025.`;
+        await new Promise(res => setTimeout(res, 1100));
+    }
+
+    // Save to cache
+    localStorage.setItem(cacheKey, JSON.stringify({ count: hotDayCount, hotDates }));
+    localStorage.setItem(cacheDateKey, today);
+
+    displayHotDayResults(hotDayCount, hotDates, false);
+}
+function displayHotDayResults(count, hotDates, fromCache) {
+    document.getElementById("counter-status").textContent = fromCache ? "Loaded from cache." : "Done.";
+    document.getElementById("counter-result").textContent =
+        `Charlottesville has had ${count} day(s) at or above 90°F so far in 2025.`;
+
+    const listContainer = document.getElementById("hot-days-list");
+    listContainer.innerHTML = ""; // Clear old content
+
+    if (hotDates.length > 0) {
+        const list = document.createElement("ul");
+        hotDates.forEach(date => {
+            const li = document.createElement("li");
+            li.textContent = date;
+            list.appendChild(li);
+        });
+        listContainer.appendChild(list);
+    } else {
+        listContainer.innerHTML = "<p>No 90°F+ days recorded yet.</p>";
+    }
+}
+
+
         }
     </script>
 </body>
