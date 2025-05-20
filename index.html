@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Ice Cream Day & 90°F Day Tracker</title>
+  <title>Ice Cream Day Tracker</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -21,8 +21,9 @@
       box-shadow: 0px 4px 6px rgba(0,0,0,0.1);
       display: inline-block;
       margin-bottom: 40px;
+      max-width: 600px;
     }
-    #temperature, #ice-cream-status, #counter-status {
+    #temperature, #ice-cream-status, #counter-status, #forecast-status {
       font-size: 1.2em;
       margin: 10px 0;
     }
@@ -52,9 +53,8 @@
     }
   </style>
 </head>
-<body onload="getWeather(); countHotDays();">
+<body onload="getWeather(); checkIceCreamForecast(); countHotDays();">
 
-  <!-- ICE CREAM DAY WIDGET -->
   <h1>Is it Ice Cream Day Today?</h1>
   <div class="weather-container">
     <p id="temperature"></p>
@@ -62,14 +62,17 @@
     <p id="loading" class="loading" style="display:none;">Fetching weather data...</p>
   </div>
 
-  <!-- 90°F DAY COUNTER WIDGET -->
+  <h2>🍧 Ice Cream Days Coming Up?</h2>
+  <div class="weather-container">
+    <p id="forecast-status">Checking forecast...</p>
+  </div>
+
   <h1>90°F+ Days in Charlottesville (2025)</h1>
   <div class="weather-container">
     <p id="counter-status">Loading…</p>
     <p id="counter-result"></p>
   </div>
 
-  <!-- FULL LIST TABLE -->
   <h2>List of Hot Days (≥ 90°F)</h2>
   <div class="table-container">
     <table>
@@ -83,137 +86,155 @@
   </div>
 
   <script>
-  // ──────────────────────────────────────────────────────────────────────────
-  // CONFIG
-  const apiKey = "853d377f2cb7f62a43fb1bc298efd91b";
-  const city   = "Charlottesville";
-  const lat    = 38.0293;
-  const lon    = -78.4767;
+    // ─────────── CONFIG ───────────
+    const apiKey = "853d377f2cb7f62a43fb1bc298efd91b";
+    const city   = "Charlottesville";
+    const lat    = 38.0293;
+    const lon    = -78.4767;
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // ICE CREAM DAY CHECK
-  async function getWeather(){
-    const loadEl = document.getElementById("loading");
-    loadEl.style.display = "block";
-    try {
-      let res = await fetch(
-        `https://api.openweathermap.org/data/2.5/weather`
-        + `?q=${city}&units=imperial&appid=${apiKey}`
-      );
-      let data = await res.json();
-      let high = data.main.temp_max;
-      document.getElementById("temperature").innerText =
-        `High today in ${city}: ${high.toFixed(1)} °F`;
-      document.getElementById("ice-cream-status").innerText =
-        high >= 90
-          ? "🍦 Yes — time for ice cream!"
-          : "😢 Not quite 90°F yet.";
-    } catch (err) {
-      document.getElementById("temperature").innerText =
-        "Error fetching weather.";
-      document.getElementById("ice-cream-status").innerText =
-        "Check your API key or network.";
-    } finally {
-      loadEl.style.display = "none";
-    }
-  }
-
-  // ──────────────────────────────────────────────────────────────────────────
-  // 90°F DAY COUNTER + LIST WITH CACHING
-  function generateDateRange(startDate, endDate){
-    let dates = [];
-    let cur = new Date(startDate);
-    let end = new Date(endDate);
-    while(cur <= end){
-      dates.push(new Date(cur));
-      cur.setDate(cur.getDate()+1);
-    }
-    return dates;
-  }
-
-  async function fetchHighTemp(date){
-    let dt  = Math.floor(date.getTime()/1000);
-    let url = `https://api.openweathermap.org/data/3.0/onecall/timemachine`
-            + `?lat=${lat}&lon=${lon}&dt=${dt}`
-            + `&appid=${apiKey}&units=imperial`;
-    let res = await fetch(url);
-    let data= await res.json();
-    // Hourly array usually lives in `data.hourly`
-    let hours = data.hourly || data.data || [];
-    let temps = hours.map(h => h.temp||0);
-    return Math.max(...temps);
-  }
-
-  async function countHotDays(){
-    const keyCount = "hotDayCount2025";
-    const keyList  = "hotDayList2025";
-    const keyDate  = "hotDayCacheDate";
-    const todayStr= new Date().toISOString().split("T")[0];
-
-    // Try load from cache
-    let cachedCount = localStorage.getItem(keyCount);
-    let cachedList  = localStorage.getItem(keyList);
-    let cachedDate  = localStorage.getItem(keyDate);
-
-    if(cachedCount && cachedList && cachedDate===todayStr){
-      drawResults(
-        Number(cachedCount),
-        JSON.parse(cachedList),
-        "Loaded from cache."
-      );
-      return;
+    // ─────────── Today’s Ice Cream Check ───────────
+    async function getWeather(){
+      const loadEl = document.getElementById("loading");
+      loadEl.style.display = "block";
+      try {
+        let res = await fetch(
+          `https://api.openweathermap.org/data/2.5/weather`
+          + `?q=${city}&units=imperial&appid=${apiKey}`
+        );
+        let data = await res.json();
+        let high = data.main.temp_max;
+        document.getElementById("temperature").innerText =
+          `High today in ${city}: ${high.toFixed(1)} °F`;
+        document.getElementById("ice-cream-status").innerText =
+          high >= 90
+            ? "🍦 Yes — time for ice cream!"
+            : "😢 Not quite 90°F yet.";
+      } catch (err) {
+        document.getElementById("temperature").innerText =
+          "Error fetching weather.";
+        document.getElementById("ice-cream-status").innerText =
+          "Check your API key or network.";
+      } finally {
+        loadEl.style.display = "none";
+      }
     }
 
-    // Otherwise, fetch everything
-    let start = "2025-01-01";
-    let dates = generateDateRange(start, new Date());
-    let hotCount = 0, hotList = [];
-
-    for(let i=0; i<dates.length; i++){
-      let d = dates[i];
-      document.getElementById("counter-status").innerText =
-        `Checking ${d.toDateString()} (${i+1} of ${dates.length})…`;
+    // ─────────── Forecast Check ───────────
+    async function checkIceCreamForecast() {
+      const forecastEl = document.getElementById("forecast-status");
 
       try {
-        let maxT = await fetchHighTemp(d);
-        if(maxT >= 90){
-          hotCount++;
-          hotList.push({
-            date: d.toISOString().split("T")[0],
-            temp: maxT.toFixed(1)
+        const url = `https://api.openweathermap.org/data/3.0/onecall?lat=${lat}&lon=${lon}&exclude=current,minutely,hourly,alerts&units=imperial&appid=${apiKey}`;
+        const res = await fetch(url);
+        const data = await res.json();
+
+        const hotDays = data.daily
+          .filter(day => day.temp.max >= 90)
+          .map(day => {
+            const date = new Date(day.dt * 1000);
+            return date.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
           });
+
+        if (hotDays.length > 0) {
+          forecastEl.innerText = `🍨 Looks like ice cream day is coming on: ${hotDays.join(", ")}`;
+        } else {
+          forecastEl.innerText = "😎 No 90°F+ days expected in the next 7 days.";
         }
-      } catch(err){
-        console.error("Error on", d, err);
+      } catch (error) {
+        forecastEl.innerText = "⚠️ Could not fetch forecast. Try again later.";
+        console.error("Forecast error:", error);
       }
-      // avoid rate-limit
-      await new Promise(r=>setTimeout(r,1100));
     }
 
-    // Cache
-    localStorage.setItem(keyCount, hotCount);
-    localStorage.setItem(keyList, JSON.stringify(hotList));
-    localStorage.setItem(keyDate, todayStr);
-
-    drawResults(hotCount, hotList, "Data fetched fresh.");
-  }
-
-  function drawResults(count, list, statusMsg){
-    document.getElementById("counter-status").innerText = statusMsg;
-    document.getElementById("counter-result").innerText =
-      `Total hot days (≥ 90°F): ${count}`;
-
-    let tbody = document.getElementById("hot-days-body");
-    tbody.innerHTML = "";  // clear old
-    for(let item of list){
-      let row = `<tr>
-        <td>${item.date}</td>
-        <td>${item.temp}</td>
-      </tr>`;
-      tbody.insertAdjacentHTML("beforeend", row);
+    // ─────────── 90°F Day Tracker ───────────
+    function generateDateRange(startDate, endDate){
+      let dates = [];
+      let cur = new Date(startDate);
+      let end = new Date(endDate);
+      while(cur <= end){
+        dates.push(new Date(cur));
+        cur.setDate(cur.getDate()+1);
+      }
+      return dates;
     }
-  }
-  // ──────────────────────────────────────────────────────────────────────────
+
+    async function fetchHighTemp(date){
+      let dt  = Math.floor(date.getTime()/1000);
+      let url = `https://api.openweathermap.org/data/3.0/onecall/timemachine`
+              + `?lat=${lat}&lon=${lon}&dt=${dt}`
+              + `&appid=${apiKey}&units=imperial`;
+      let res = await fetch(url);
+      let data= await res.json();
+      let hours = data.hourly || data.data || [];
+      let temps = hours.map(h => h.temp||0);
+      return Math.max(...temps);
+    }
+
+    async function countHotDays(){
+      const keyCount = "hotDayCount2025";
+      const keyList  = "hotDayList2025";
+      const keyDate  = "hotDayCacheDate";
+      const todayStr= new Date().toISOString().split("T")[0];
+
+      let cachedCount = localStorage.getItem(keyCount);
+      let cachedList  = localStorage.getItem(keyList);
+      let cachedDate  = localStorage.getItem(keyDate);
+
+      if(cachedCount && cachedList && cachedDate===todayStr){
+        drawResults(
+          Number(cachedCount),
+          JSON.parse(cachedList),
+          "Loaded from cache."
+        );
+        return;
+      }
+
+      let start = "2025-01-01";
+      let dates = generateDateRange(start, new Date());
+      let hotCount = 0, hotList = [];
+
+      for(let i=0; i<dates.length; i++){
+        let d = dates[i];
+        document.getElementById("counter-status").innerText =
+          `Checking ${d.toDateString()} (${i+1} of ${dates.length})…`;
+
+        try {
+          let maxT = await fetchHighTemp(d);
+          if(maxT >= 90){
+            hotCount++;
+            hotList.push({
+              date: d.toISOString().split("T")[0],
+              temp: maxT.toFixed(1)
+            });
+          }
+        } catch(err){
+          console.error("Error on", d, err);
+        }
+        await new Promise(r=>setTimeout(r,1100));
+      }
+
+      localStorage.setItem(keyCount, hotCount);
+      localStorage.setItem(keyList, JSON.stringify(hotList));
+      localStorage.setItem(keyDate, todayStr);
+
+      drawResults(hotCount, hotList, "Data fetched fresh.");
+    }
+
+    function drawResults(count, list, statusMsg){
+      document.getElementById("counter-status").innerText = statusMsg;
+      document.getElementById("counter-result").innerText =
+        `Total hot days (≥ 90°F): ${count}`;
+
+      let tbody = document.getElementById("hot-days-body");
+      tbody.innerHTML = "";
+      for(let item of list){
+        let row = `<tr>
+          <td>${item.date}</td>
+          <td>${item.temp}</td>
+        </tr>`;
+        tbody.insertAdjacentHTML("beforeend", row);
+      }
+    }
   </script>
 </body>
 </html>
